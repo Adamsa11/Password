@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Baza Haseł Liczników HELI & ZAPI</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome do ikon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .code-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        /* Stylizacja realistycznych ekranów LCD w jasnym motywie */
+        .lcd-screen-inmotion {
+            background: linear-gradient(135deg, #0d1e2d 0%, #08121a 100%);
+            box-shadow: inset 0 0 12px rgba(0, 240, 255, 0.2);
+        }
+        .lcd-screen-voltage {
+            background: radial-gradient(circle at center, #102a45 0%, #071424 100%);
+            box-shadow: inset 0 0 12px rgba(56, 189, 248, 0.3);
+        }
+        .lcd-screen-heli {
+            background: #090d16;
+            box-shadow: inset 0 0 10px rgba(245, 158, 11, 0.2);
+        }
+        .lcd-screen-zapi {
+            background: #051412;
+            box-shadow: inset 0 0 10px rgba(52, 211, 153, 0.25);
+        }
+        .lcd-screen-cpd {
+            background: #020c1b;
+            box-shadow: inset 0 0 15px rgba(59, 130, 246, 0.3);
+        }
+        .lcd-screen-917 {
+            background: #061329;
+            box-shadow: inset 0 0 15px rgba(14, 165, 233, 0.3);
+        }
+        .lcd-screen-192 {
+            background: #110505;
+            box-shadow: inset 0 0 10px rgba(239, 68, 68, 0.3);
+        }
+
+        /* Przyciski fizyczne */
+        .hardware-btn {
+            background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8);
+            transition: all 0.1s ease;
+        }
+        .hardware-btn:active {
+            transform: scale(0.92);
+            background: #cbd5e1;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .hardware-btn-dark {
+            background: linear-gradient(180deg, #475569 0%, #334155 100%);
+            border: 1px solid #1e293b;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.1);
+            transition: all 0.1s ease;
+        }
+        .hardware-btn-dark:active {
+            transform: scale(0.92);
+            background: #1e293b;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col justify-between selection:bg-amber-100 selection:text-amber-900">
+
+    <!-- Górny pasek nawigacyjny -->
+    <header class="border-b border-slate-200 bg-white/90 backdrop-blur sticky top-0 z-50 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center text-white font-black text-xl shadow-md shadow-amber-500/20">
+                    H
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-lg tracking-tight text-slate-900">HELI / ZAPI</h1>
+                    <p class="text-xs text-amber-600 font-bold tracking-wider uppercase">Baza wiedzy i multimedia</p>
+                </div>
+            </div>
+            
+            <!-- Wyszukiwarka -->
+            <div class="relative w-full sm:w-80">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                    <i class="fa-solid fa-magnifying-glass text-sm"></i>
+                </span>
+                <input type="text" id="search-input" placeholder="Szukaj licznika..." 
+                    class="w-full pl-10 pr-4 py-2 bg-slate-100 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all">
+            </div>
+        </div>
+    </header>
+
+    <!-- Główna zawartość -->
+    <main class="max-w-6xl w-full mx-auto px-4 py-8 flex-grow">
+        
+        <!-- Kategorie i filtry -->
+        <div class="flex flex-wrap gap-2 mb-8">
+            <button onclick="filterType('all')" class="filter-btn px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 text-white shadow-sm transition-all duration-200">Wszystkie</button>
+            <button onclick="filterType('zapi')" class="filter-btn px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 shadow-sm transition-all duration-200">Systemy ZAPI</button>
+            <button onclick="filterType('numeric')" class="filter-btn px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 shadow-sm transition-all duration-200">Kody Cyfrowe</button>
+            <button onclick="filterType('arrows')" class="filter-btn px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 shadow-sm transition-all duration-200">Kombinacje Strzałek</button>
+        </div>
+
+        <!-- Siatka kart z licznikami -->
+        <div id="meters-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Wygenerowane dynamicznie przez JavaScript -->
+        </div>
+
+        <!-- Komunikat o braku wyników -->
+        <div id="no-results" class="hidden py-16 text-center text-slate-400 bg-white border border-slate-200 rounded-3xl shadow-sm">
+            <i class="fa-solid fa-magnifying-glass text-5xl mb-4 text-slate-300"></i>
+            <p class="text-lg font-bold text-slate-700">Brak pasujących wyników</p>
+            <p class="text-xs text-slate-400 mt-1">Spróbuj wpisać inną frazę lub zresetuj filtry.</p>
+        </div>
+    </main>
+
+    <!-- Stopka -->
+    <footer class="border-t border-slate-200 py-6 bg-white shadow-inner">
+        <div class="max-w-6xl mx-auto px-4 text-center text-xs text-slate-500 flex flex-col md:flex-row justify-between items-center gap-3">
+            <p>&copy; 2026 HELI Passwords Hub. Wszystkie prawa zastrzeżone.</p>
+            <p class="flex items-center gap-1.5 text-slate-400">
+                <i class="fa-solid fa-circle-info text-amber-500"></i> Wyłącznie dla uprawnionego personelu technicznego.
+            </p>
+        </div>
+    </footer>
+
+    <!-- Skrypt Bazy Danych i Symulatorów -->
+    <script>
+        // Dane techniczne oraz makiety urządzeń ze zdjęć w docx
+        const METERS_DATA = [
+            {
+                id: "inmotion",
+                name: "Inmotion Meter",
+                tags: ["arrows", "inmotion", "heli"],
+                hasAdmin: true,
+                adminPass: "Left, Left, Right, Right, Down",
+                adminKeys: ["Left", "Left", "Right", "Right", "Down"],
+                hasUser: true,
+                userPass: "Up, Up, Up, Up, Up",
+                userKeys: ["Up", "Up", "Up", "Up", "Up"],
+                layout: "inmotion-layout",
+                imagePath: "img/inmotion.png",
+                desc: "Srebrna, podłużna ramka z prostokątnym ekranem po lewej i okrągłym manipulatorem przycisków kierunkowych po prawej.",
+                bgColor: "bg-slate-100"
+            },
+            {
+                id: "high_voltage",
+                name: "High Voltage Truck Meter",
+                tags: ["numeric", "high", "voltage", "heli"],
+                hasAdmin: true,
+                adminPass: "000621",
+                adminKeys: ["0", "0", "0", "6", "2", "1"],
+                hasUser: false,
+                userPass: "Brak hasła",
+                userKeys: [],
+                layout: "voltage-layout",
+                imagePath: "img/high_voltage.png",
+                desc: "Zaprojektowany do wózków wysokiego napięcia. Owalny ekran z dolną listwą przycisków i żółtymi strzałkami.",
+                bgColor: "bg-slate-100"
+            },
+            {
+                id: "heli_controller",
+                name: "HELI Controller Meter",
+                tags: ["numeric", "heli", "controller"],
+                hasAdmin: true,
+                adminPass: "3918",
+                adminKeys: ["3", "9", "1", "8"],
+                hasUser: true,
+                userPass: "0002",
+                userKeys: ["0", "0", "0", "2"],
+                layout: "heli-layout",
+                imagePath: "img/heli_controller.png",
+                desc: "Elegancka, całkowicie czarna obudowa z krzyżem przycisków oraz klawiszami powrotu i zatwierdzenia po prawej.",
+                bgColor: "bg-slate-900"
+            },
+            {
+                id: "opd_zapi",
+                name: "OPD truck ZAPI Meter",
+                tags: ["numeric", "zapi", "opd"],
+                hasAdmin: true,
+                adminPass: "1212",
+                adminKeys: ["1", "2", "1", "2"],
+                hasUser: true,
+                userPass: "4444",
+                userKeys: ["4", "4", "4", "4"],
+                layout: "opd-layout",
+                imagePath: "img/opd_zapi.png",
+                desc: "Panel sterownika ZAPI do wózków wysokiego składowania OPD. Posiada pionowy rozkład przycisków po lewej i prawej stronie ekranu.",
+                bgColor: "bg-zinc-800"
+            },
+            {
+                id: "cpd_zapi",
+                name: "CPD truck ZAPI Meter",
+                tags: ["numeric", "zapi", "cpd"],
+                hasAdmin: true,
+                adminPass: "12123",
+                adminKeys: ["1", "2", "1", "2", "3"],
+                hasUser: true,
+                userPass: "66666",
+                userKeys: ["6", "6", "6", "6", "6"],
+                layout: "cpd-layout",
+                imagePath: "img/cpd_zapi.png",
+                desc: "System diagnostyczny wózków czołowych CPD. Posiada tarcze zegarów na pulpicie i numeryczną klawiaturę membranową po prawej.",
+                bgColor: "bg-slate-800"
+            },
+            {
+                id: "917_meter",
+                name: "917 Meter",
+                tags: ["numeric", "917", "heli"],
+                hasAdmin: true,
+                adminPass: "090107",
+                adminKeys: ["0", "9", "0", "1", "0", "7"],
+                hasUser: false,
+                userPass: "Brak hasła",
+                userKeys: [],
+                layout: "917-layout",
+                imagePath: "img/917_meter.png",
+                desc: "Licznik z zakrzywionym, nowoczesnym dołem i 4 płaskimi przyciskami u dołu panelu do nawigacji po menu.",
+                bgColor: "bg-zinc-900"
+            },
+            {
+                id: "192_meter",
+                name: "192 Meter",
+                tags: ["numeric", "192", "heli"],
+                hasAdmin: true,
+                adminPass: "191192",
+                adminKeys: ["1", "9", "1", "1", "9", "2"],
+                hasUser: false,
+                userPass: "Brak hasła",
+                userKeys: [],
+                layout: "192-layout",
+                imagePath: "img/192_meter.png",
+                desc: "Wyświetlacz serwisowy z komunikatem o konieczności resetu inspekcji 'Maintenance reset'. Przyciski po prawej stronie.",
+                bgColor: "bg-slate-800"
+            }
+        ];
+
+        // Stan symulatorów
+        const SIM_STATE = {};
+
+        // Inicjalizacja stanów
+        METERS_DATA.forEach(m => {
+            SIM_STATE[m.id] = {
+                currentInput: [],
+                targetAdmin: m.adminKeys,
+                targetUser: m.hasUser ? m.userKeys : null,
+                isNumeric: m.tags.includes('numeric')
+            };
+        });
+
+        // Przełączanie między zakładką Zdjęcie a Symulator
+        function switchTab(meterId, tabType) {
+            const photoTabBtn = document.getElementById(`tab-btn-photo-${meterId}`);
+            const simTabBtn = document.getElementById(`tab-btn-sim-${meterId}`);
+            const photoContent = document.getElementById(`tab-content-photo-${meterId}`);
+            const simContent = document.getElementById(`tab-content-sim-${meterId}`);
+
+            if (tabType === 'photo') {
+                photoTabBtn.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-white shadow-sm transition-all";
+                simTabBtn.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all";
+                photoContent.classList.remove('hidden');
+                simContent.classList.add('hidden');
+            } else {
+                simTabBtn.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-white shadow-sm transition-all";
+                photoTabBtn.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all";
+                simContent.classList.remove('hidden');
+                photoContent.classList.add('hidden');
+            }
+        }
+
+        // Generowanie kafelków z odwzorowaniem fizycznego sprzętu
+        function renderMeters(data) {
+            const grid = document.getElementById('meters-grid');
+            const noResults = document.getElementById('no-results');
+            grid.innerHTML = '';
+
+            if (data.length === 0) {
+                grid.classList.add('hidden');
+                noResults.classList.remove('hidden');
+                return;
+            }
+
+            noResults.classList.add('hidden');
+            grid.classList.remove('hidden');
+
+            data.forEach(meter => {
+                const card = document.createElement('div');
+                card.className = "bg-white border border-slate-200 rounded-3xl p-6 flex flex-col justify-between shadow-sm transition-all hover:shadow-md hover:border-slate-300";
+
+                let interfaceHTML = '';
+
+                // 1. INMOTION METER LAYOUT
+                if (meter.layout === 'inmotion-layout') {
+                    interfaceHTML = `
+                        <div class="border border-slate-300 bg-slate-200/60 p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+                            <div class="lcd-screen-inmotion w-full md:w-1/2 h-28 rounded-xl flex flex-col justify-between p-3 border-2 border-slate-400/50 relative overflow-hidden">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-[8px] text-cyan-500 font-bold tracking-wider">INMOTION SYSTEM</span>
+                                    <span class="text-[8px] text-slate-400">STATUS: OK</span>
+                                </div>
+                                <div id="screen-${meter.id}" class="text-center text-sm font-bold tracking-widest text-cyan-400 code-font my-2">
+                                    READY
+                                </div>
+                                <div class="text-[7px] text-right text-slate-500">8.4h | READY</div>
+                            </div>
+                            
+                            <div class="relative w-32 h-32 flex items-center justify-center bg-slate-300/40 rounded-full border border-slate-400/30 p-2">
+                                <button onclick="pressKey('${meter.id}', 'Up')" class="hardware-btn absolute top-1 w-9 h-9 rounded-full flex items-center justify-center text-slate-700 font-bold hover:bg-slate-150 shadow-md">
+                                    <i class="fa-solid fa-chevron-up text-xs"></i>
+                                </button>
+                                <button onclick="pressKey('${meter.id}', 'Left')" class="hardware-btn absolute left-1 w-9 h-9 rounded-full flex items-center justify-center text-slate-700 font-bold hover:bg-slate-150 shadow-md">
+                                    <i class="fa-solid fa-chevron-left text-xs"></i>
+                                </button>
+                                <button onclick="pressKey('${meter.id}', 'Right')" class="hardware-btn absolute right-1 w-9 h-9 rounded-full flex items-center justify-center text-slate-700 font-bold hover:bg-slate-150 shadow-md">
+                                    <i class="fa-solid fa-chevron-right text-xs"></i>
+                                </button>
+                                <button onclick="pressKey('${meter.id}', 'Down')" class="hardware-btn absolute bottom-8 w-9 h-9 rounded-full flex items-center justify-center text-slate-700 font-bold hover:bg-slate-150 shadow-md">
+                                    <i class="fa-solid fa-chevron-down text-xs"></i>
+                                </button>
+                                
+                                <button onclick="pressKey('${meter.id}', 'Back')" class="hardware-btn absolute bottom-0 left-2 w-7 h-6 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-150 text-[10px]">
+                                    <i class="fa-solid fa-arrow-rotate-left"></i>
+                                </button>
+                                <button onclick="pressKey('${meter.id}', 'OK')" class="hardware-btn-dark absolute bottom-0 right-2 w-8 h-6 rounded-lg flex items-center justify-center text-white text-[9px] font-bold">
+                                    OK
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // 2. HIGH VOLTAGE TRUCK METER LAYOUT
+                else if (meter.layout === 'voltage-layout') {
+                    interfaceHTML = `
+                        <div class="border border-slate-300 bg-slate-200/50 p-4 rounded-2xl flex flex-col gap-3">
+                            <div class="lcd-screen-voltage w-full h-32 rounded-xl flex flex-col justify-between p-3 border border-slate-400 relative">
+                                <div class="flex justify-between items-center text-[8px] text-sky-300">
+                                    <span>2026-12-09</span>
+                                    <span>READY</span>
+                                </div>
+                                <div class="flex items-center justify-around my-1">
+                                    <div class="text-center">
+                                        <div class="text-xs text-slate-400">SPEED</div>
+                                        <div class="text-lg font-bold text-white tracking-tight">0.0 <span class="text-xs font-normal">km/h</span></div>
+                                    </div>
+                                    <div class="w-10 h-10 rounded-full border border-sky-500/30 flex items-center justify-center bg-sky-500/10 text-sky-400">
+                                        <i class="fa-solid fa-truck-pickup text-sm"></i>
+                                    </div>
+                                    <div class="text-center">
+                                        <div class="text-xs text-slate-400">BATTERY</div>
+                                        <div class="text-lg font-bold text-sky-400">74 <span class="text-xs font-normal">%SOC</span></div>
+                                    </div>
+                                </div>
+                                <div id="screen-${meter.id}" class="text-center text-xs font-semibold tracking-wider text-yellow-400 font-mono">
+                                    SPE MODE
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-6 gap-2 pt-1">
+                                <button onclick="pressKey('${meter.id}', 'Back')" class="hardware-btn py-2 rounded-lg text-slate-500 text-xs hover:bg-slate-150"><i class="fa-solid fa-arrow-rotate-left"></i></button>
+                                <button onclick="pressKey('${meter.id}', '0')" class="hardware-btn py-2 rounded-lg font-bold text-slate-800 text-xs">0</button>
+                                <button onclick="pressKey('${meter.id}', '1')" class="hardware-btn py-2 rounded-lg font-bold text-slate-800 text-xs">1</button>
+                                <button onclick="pressKey('${meter.id}', '2')" class="hardware-btn py-2 rounded-lg font-bold text-slate-800 text-xs">2</button>
+                                <button onclick="pressKey('${meter.id}', '6')" class="hardware-btn py-2 rounded-lg font-bold text-slate-800 text-xs">6</button>
+                                <button onclick="pressKey('${meter.id}', 'OK')" class="hardware-btn-dark py-2 rounded-lg text-white font-bold text-xs">OK</button>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // 3. HELI CONTROLLER METER LAYOUT
+                else if (meter.layout === 'heli-layout') {
+                    interfaceHTML = `
+                        <div class="border border-slate-400 bg-slate-800 p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+                            <div class="lcd-screen-heli w-full md:w-1/2 h-28 rounded-xl flex flex-col justify-between p-3 border-2 border-slate-700">
+                                <div class="text-[8px] text-amber-500/80 uppercase">HELI Diagnostika</div>
+                                <div id="screen-${meter.id}" class="text-center text-xs text-amber-400 font-bold code-font my-2">
+                                    ZABLOKOWANY
+                                </div>
+                                <div class="text-[7px] text-right text-slate-500">v1.02</div>
+                            </div>
+
+                            <div class="relative w-32 h-32 flex items-center justify-center bg-slate-900 rounded-xl border border-slate-700/60 p-2">
+                                <button onclick="pressKey('${meter.id}', '3')" class="hardware-btn-dark absolute top-1 w-8 h-8 rounded-full text-slate-300 font-bold text-xs">3</button>
+                                <button onclick="pressKey('${meter.id}', '9')" class="hardware-btn-dark absolute left-1 w-8 h-8 rounded-full text-slate-300 font-bold text-xs">9</button>
+                                <button onclick="pressKey('${meter.id}', '1')" class="hardware-btn-dark absolute right-1 w-8 h-8 rounded-full text-slate-300 font-bold text-xs">1</button>
+                                <button onclick="pressKey('${meter.id}', '8')" class="hardware-btn-dark absolute bottom-8 w-8 h-8 rounded-full text-slate-300 font-bold text-xs">8</button>
+                                
+                                <button onclick="pressKey('${meter.id}', '0')" class="hardware-btn absolute bottom-1 left-2 w-6 h-5 rounded text-[10px] text-slate-700 font-bold">0</button>
+                                <button onclick="pressKey('${meter.id}', '2')" class="hardware-btn absolute bottom-1 right-2 w-6 h-5 rounded text-[10px] text-slate-700 font-bold">2</button>
+                                
+                                <button onclick="pressKey('${meter.id}', 'Back')" class="hardware-btn-dark absolute bottom-1 w-6 h-5 rounded text-[9px] text-slate-400 flex items-center justify-center" style="left:50%; transform:translateX(-50%);"><i class="fa-solid fa-arrow-left"></i></button>
+                                <button onclick="pressKey('${meter.id}', 'OK')" class="hardware-btn-dark absolute top-8 w-7 h-5 rounded text-[9px] font-bold text-white" style="left:50%; transform:translateX(-50%);">OK</button>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // 4. OPD TRUCK ZAPI METER LAYOUT
+                else if (meter.layout === 'opd-layout') {
+                    interfaceHTML = `
+                        <div class="border border-slate-300 bg-slate-200 p-4 rounded-2xl flex items-center justify-between gap-2">
+                            <div class="flex flex-col gap-4">
+                                <button onclick="pressKey('${meter.id}', '1')" class="hardware-btn w-10 py-2.5 rounded-lg text-slate-800 text-[10px] font-bold flex flex-col items-center">
+                                    <i class="fa-solid fa-plus text-[8px] mb-0.5"></i> 1
+                                </button>
+                                <button onclick="pressKey('${meter.id}', 'Esc')" class="hardware-btn w-10 py-2.5 rounded-lg text-slate-600 text-[10px] font-bold flex flex-col items-center">
+                                    ESC 3
+                                </button>
+                            </div>
+
+                            <div class="lcd-screen-zapi flex-grow h-28 rounded-xl flex flex-col justify-between p-3 border-2 border-slate-400 mx-2">
+                                <div class="text-[8px] text-emerald-500 font-bold">OPD ZAPI CONTROLLER</div>
+                                <div id="screen-${meter.id}" class="text-center text-xs font-bold text-emerald-400 tracking-wider my-2 font-mono">
+                                    ENTER PASSWORD
+                                </div>
+                                <div class="text-[7px] text-emerald-500/60 text-right">000000 KM | 00125.0 h</div>
+                            </div>
+
+                            <div class="flex flex-col gap-4">
+                                <button onclick="pressKey('${meter.id}', '2')" class="hardware-btn w-10 py-2.5 rounded-lg text-slate-800 text-[10px] font-bold flex flex-col items-center">
+                                    <i class="fa-solid fa-minus text-[8px] mb-0.5"></i> 2
+                                </button>
+                                <button onclick="pressKey('${meter.id}', 'OK')" class="hardware-btn-dark w-10 py-2.5 rounded-lg text-white text-[10px] font-bold flex flex-col items-center">
+                                    <i class="fa-solid fa-arrow-turn-down rotate-90 text-[8px] mb-0.5"></i> 4
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // 5. CPD TRUCK ZAPI METER LAYOUT
+                else if (meter.layout === 'cpd-layout') {
+                    interfaceHTML = `
+                        <div class="border border-slate-300 bg-slate-200 p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+                            <div class="lcd-screen-cpd w-full md:w-1/2 h-28 rounded-xl flex flex-col justify-between p-3 border-2 border-slate-400">
+                                <div class="flex justify-between text-[7px] text-blue-400">
+                                    <span>EPS ACTIVE</span>
+                                    <span>118.0 H</span>
+                                </div>
+                                <div id="screen-${meter.id}" class="text-center text-xs font-bold text-blue-300 tracking-wider my-2 font-mono">
+                                    ZAPI SYSTEMS
+                                </div>
+                                <div class="text-[7px] text-blue-400 text-right">SPD: 0.0 KM/H</div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2 w-full md:w-auto">
+                                <button onclick="pressKey('${meter.id}', '1')" class="hardware-btn px-4 py-2 rounded-lg text-slate-800 font-bold text-xs flex items-center justify-center gap-1"><i class="fa-solid fa-angle-up text-[9px]"></i> 1</button>
+                                <button onclick="pressKey('${meter.id}', '2')" class="hardware-btn px-4 py-2 rounded-lg text-slate-800 font-bold text-xs flex items-center justify-center gap-1"><i class="fa-solid fa-angle-down text-[9px]"></i> 2</button>
+                                <button onclick="pressKey('${meter.id}', '3')" class="hardware-btn px-4 py-2 rounded-lg text-slate-800 font-bold text-xs flex items-center justify-center gap-1"><i class="fa-solid fa-plus text-[9px]"></i> 3</button>
+                                <button onclick="pressKey('${meter.id}', '6')" class="hardware-btn px-4 py-2 rounded-lg text-slate-800 font-bold text-xs flex items-center justify-center gap-1"><i class="fa-solid fa-minus text-[9px]"></i> 6</button>
+                                <button onclick="pressKey('${meter.id}', 'Esc')" class="hardware-btn px-3 py-2 rounded-lg text-slate-600 font-semibold text-[10px] flex items-center justify-center">Esc 5</button>
+                                <button onclick="pressKey('${meter.id}', 'OK')" class="hardware-btn-dark px-3 py-2 rounded-lg text-white font-bold text-[10px] flex items-center justify-center">Ent 6</button>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // 6. 917 METER LAYOUT
+                else if (meter.layout === '917-layout') {
+                    interfaceHTML = `
+                        <div class="border border-slate-300 bg-slate-200 p-4 rounded-2xl flex flex-col gap-3">
+                            <div class="lcd-screen-917 w-full h-28 rounded-xl flex flex-col justify-between p-3 border-2 border-slate-400">
+                                <div class="flex justify-between text-[8px] text-sky-400">
+                                    <span>RPM: 0</span>
+                                    <span>00001.9 h</span>
+                                </div>
+                                <div id="screen-${meter.id}" class="text-center text-xs font-bold text-sky-300 tracking-wider my-1 font-mono">
+                                    917 METER CONTROL
+                                </div>
+                                <div class="flex justify-between text-[7px] text-sky-400/80">
+                                    <span>11.6V</span>
+                                    <span>TEMP: ok</span>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-around items-center pt-1 px-4">
+                                <button onclick="pressKey('${meter.id}', '0')" class="hardware-btn w-10 h-10 rounded-full flex items-center justify-center text-slate-800 font-bold text-xs shadow-md">0</button>
+                                <button onclick="pressKey('${meter.id}', '9')" class="hardware-btn w-10 h-10 rounded-full flex items-center justify-center text-slate-800 font-bold text-xs shadow-md">9</button>
+                                <button onclick="pressKey('${meter.id}', '1')" class="hardware-btn w-10 h-10 rounded-full flex items-center justify-center text-slate-800 font-bold text-xs shadow-md">1</button>
+                                <button onclick="pressKey('${meter.id}', '7')" class="hardware-btn-dark w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-md">7</button>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // 7. 192 METER LAYOUT
+                else if (meter.layout === '192-layout') {
+                    interfaceHTML = `
+                        <div class="border border-slate-300 bg-slate-200 p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+                            <div class="lcd-screen-192 w-full md:w-1/2 h-28 rounded-xl flex flex-col justify-between p-3 border-2 border-slate-400">
+                                <div class="text-[8px] text-red-500 font-bold">Maintenance reset</div>
+                                <div id="screen-${meter.id}" class="text-center text-xs text-red-500 font-bold tracking-wider my-1 font-mono">
+                                    [ 66666 ]
+                                </div>
+                                <div class="text-[7px] text-red-500/80 text-center animate-pulse">Wrong password, check it.</div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2 w-full md:w-auto">
+                                <button onclick="pressKey('${meter.id}', '1')" class="hardware-btn px-4 py-2.5 rounded-lg text-slate-850 font-bold text-xs">1</button>
+                                <button onclick="pressKey('${meter.id}', '9')" class="hardware-btn px-4 py-2.5 rounded-lg text-slate-850 font-bold text-xs">9</button>
+                                <button onclick="pressKey('${meter.id}', '2')" class="hardware-btn px-4 py-2.5 rounded-lg text-slate-850 font-bold text-xs">2</button>
+                                <button onclick="pressKey('${meter.id}', 'OK')" class="hardware-btn-dark px-4 py-2.5 rounded-lg text-white font-bold text-xs flex items-center justify-center"><i class="fa-solid fa-check"></i></button>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                card.innerHTML = `
+                    <div>
+                        <!-- Nagłówek i Tagi -->
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-base font-extrabold text-slate-900 tracking-tight">${meter.name}</h3>
+                            <span class="text-[9px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 border border-slate-200">
+                                ${meter.tags.includes('zapi') ? 'ZAPI SYSTEM' : 'HELI FORKLIFT'}
+                            </span>
+                        </div>
+
+                        <!-- Opis urządzenia -->
+                        <p class="text-xs text-slate-500 mb-5 leading-relaxed">${meter.desc}</p>
+
+                        <!-- Sekcja haseł -->
+                        <div class="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-100 mb-5">
+                            <!-- Hasło Administratora -->
+                            <div class="flex flex-col sm:flex-row sm:items-start md:items-center justify-between gap-2 pb-3 border-b border-slate-200">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                                    <span class="text-xs font-bold text-slate-600 uppercase tracking-wider">Hasło Administratora:</span>
+                                </div>
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <div class="code-font text-xs font-bold text-slate-900 bg-white border border-slate-200 px-2 py-1 rounded-lg shadow-sm">
+                                        ${meter.adminPass}
+                                    </div>
+                                    <button onclick="copyValue('${meter.adminPass}')" class="text-slate-400 hover:text-slate-700 transition p-1" title="Kopiuj">
+                                        <i class="fa-regular fa-copy text-sm"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Hasło Użytkownika -->
+                            <div class="flex flex-col sm:flex-row sm:items-start md:items-center justify-between gap-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+                                    <span class="text-xs font-bold text-slate-600 uppercase tracking-wider">Hasło Użytkownika:</span>
+                                </div>
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <div class="code-font text-xs font-bold text-slate-900 bg-white border border-slate-200 px-2 py-1 rounded-lg shadow-sm">
+                                        ${meter.userPass}
+                                    </div>
+                                    ${meter.hasUser ? `
+                                        <button onclick="copyValue('${meter.userPass}')" class="text-slate-400 hover:text-slate-700 transition p-1" title="Kopiuj">
+                                            <i class="fa-regular fa-copy text-sm"></i>
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sekcja multimedialna / Symulator z zakładkami -->
+                    <div class="mt-4">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 flex items-center gap-1">
+                                <i class="fa-solid fa-photo-film"></i> Podgląd i Symulacja
+                            </span>
+                            
+                            <!-- Przełącznik zakładek -->
+                            <div class="flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                                <button id="tab-btn-photo-${meter.id}" onclick="switchTab('${meter.id}', 'photo')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-white shadow-sm transition-all">
+                                    Zdjęcie
+                                </button>
+                                <button id="tab-btn-sim-${meter.id}" onclick="switchTab('${meter.id}', 'sim')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all">
+                                    Symulator
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Zawartość Zakładki: Zdjęcie -->
+                        <div id="tab-content-photo-${meter.id}" class="relative h-64 rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center">
+                            <img src="${meter.imagePath}" alt="${meter.name}" class="w-full h-full object-cover rounded-2xl" 
+                                 onerror="showImagePlaceholder(this, '${meter.imagePath}')">
+                        </div>
+
+                        <!-- Zawartość Zakładki: Symulator -->
+                        <div id="tab-content-sim-${meter.id}" class="hidden">
+                            <div class="flex justify-end mb-2">
+                                <button onclick="resetSim('${meter.id}')" class="text-[10px] text-slate-400 hover:text-slate-600 flex items-center gap-1 transition">
+                                    <i class="fa-solid fa-rotate-left"></i> Resetuj
+                                </button>
+                            </div>
+                            ${interfaceHTML}
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Funkcja obsługująca brak pliku graficznego na serwerze
+        function showImagePlaceholder(imgElement, expectedPath) {
+            const container = imgElement.parentElement;
+            container.innerHTML = `
+                <div class="p-6 text-center flex flex-col items-center justify-center gap-2">
+                    <div class="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-400 mb-1 animate-pulse">
+                        <i class="fa-regular fa-image text-xl"></i>
+                    </div>
+                    <p class="text-xs font-bold text-slate-700">Zdjęcie niedostępne lokalnie</p>
+                    <p class="text-[10px] text-slate-400 max-w-xs leading-normal">
+                        Wrzuć zdjęcie z dokumentu Word jako plik: <br>
+                        <code class="bg-slate-200 px-1 py-0.5 rounded font-mono text-indigo-600 font-bold text-[9px]">${expectedPath}</code>
+                    </p>
+                </div>
+            `;
+        }
+
+        // Kopiowanie do schowka
+        function copyValue(text) {
+            const tempInput = document.createElement("textarea");
+            document.body.appendChild(tempInput);
+            tempInput.value = text;
+            tempInput.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempInput);
+            
+            showToastMessage(`Skopiowano: ${text}`);
+        }
+
+        // Płynne toasty systemowe bez alertów
+        function showToastMessage(message) {
+            const toast = document.createElement('div');
+            toast.className = "fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-3 rounded-2xl font-bold text-xs shadow-lg flex items-center gap-2.5 z-50 transform translate-y-10 opacity-0 transition-all duration-300";
+            toast.innerHTML = `<i class="fa-solid fa-clipboard-check text-emerald-400"></i> ${message}`;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.remove('translate-y-10', 'opacity-0');
+            }, 50);
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-10', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 2000);
+        }
+
+        // Obsługa klawiszy symulatora
+        function pressKey(meterId, key) {
+            const state = SIM_STATE[meterId];
+            const screen = document.getElementById(`screen-${meterId}`);
+            
+            if (key === 'Back' || key === 'Esc') {
+                resetSim(meterId);
+                return;
+            }
+
+            if (key === 'OK' || key === 'Ent') {
+                checkSimCode(meterId);
+                return;
+            }
+
+            state.currentInput.push(key);
+            
+            if (state.isNumeric) {
+                screen.textContent = state.currentInput.join(' ');
+                screen.className = "text-center text-sm font-bold tracking-widest mt-2 text-white font-mono";
+            } else {
+                const mapIcons = { 'Up': '↑', 'Down': '↓', 'Left': '←', 'Right': '→' };
+                screen.textContent = state.currentInput.map(k => mapIcons[k] || k).join(' ');
+                screen.className = "text-center text-sm font-bold tracking-widest mt-2 text-amber-400 font-mono";
+            }
+
+            const maxAdminLen = state.targetAdmin.length;
+            const maxUserLen = state.targetUser ? state.targetUser.length : 99;
+            
+            if (state.currentInput.length >= Math.max(maxAdminLen, maxUserLen)) {
+                setTimeout(() => checkSimCode(meterId), 350);
+            }
+        }
+
+        // Sprawdzanie wprowadzonego kodu
+        function checkSimCode(meterId) {
+            const state = SIM_STATE[meterId];
+            const screen = document.getElementById(`screen-${meterId}`);
+            
+            const currentString = state.currentInput.join(', ').toLowerCase();
+            const targetAdminString = state.targetAdmin.join(', ').toLowerCase();
+            const targetUserString = state.targetUser ? state.targetUser.join(', ').toLowerCase() : null;
+
+            if (currentString === targetAdminString) {
+                screen.textContent = "ADMIN ACCESS OK!";
+                screen.className = "text-center text-xs font-black tracking-wider text-emerald-400 animate-pulse my-2";
+                showToastMessage(`Autoryzacja Administratora powiodła się!`);
+            } else if (targetUserString && currentString === targetUserString) {
+                screen.textContent = "USER ACCESS OK!";
+                screen.className = "text-center text-xs font-black tracking-wider text-sky-400 animate-pulse my-2";
+                showToastMessage(`Autoryzacja Użytkownika powiodła się!`);
+            } else {
+                screen.textContent = "BŁĘDNE HASŁO";
+                screen.className = "text-center text-xs font-black tracking-wider text-red-500 animate-bounce my-2";
+                setTimeout(() => {
+                    resetSim(meterId);
+                }, 1300);
+            }
+        }
+
+        // Przywracanie domyślnego tekstu ekranu po resecie
+        function resetSim(meterId) {
+            const state = SIM_STATE[meterId];
+            const screen = document.getElementById(`screen-${meterId}`);
+            state.currentInput = [];
+            
+            if (meterId === 'inmotion') {
+                screen.textContent = "READY";
+                screen.className = "text-center text-sm font-bold tracking-widest text-cyan-400 code-font my-2";
+            } else if (meterId === 'high_voltage') {
+                screen.textContent = "SPE MODE";
+                screen.className = "text-center text-xs font-semibold tracking-wider text-yellow-400 font-mono";
+            } else if (meterId === 'heli_controller') {
+                screen.textContent = "ZABLOKOWANY";
+                screen.className = "text-center text-xs text-amber-400 font-bold code-font my-2";
+            } else if (meterId === 'opd_zapi') {
+                screen.textContent = "ENTER PASSWORD";
+                screen.className = "text-center text-xs font-bold text-emerald-400 tracking-wider my-2 font-mono";
+            } else if (meterId === 'cpd_zapi') {
+                screen.textContent = "ZAPI SYSTEMS";
+                screen.className = "text-center text-xs font-bold text-blue-300 tracking-wider my-2 font-mono";
+            } else if (meterId === '917_meter') {
+                screen.textContent = "917 METER CONTROL";
+                screen.className = "text-center text-xs font-bold text-sky-300 tracking-wider my-1 font-mono";
+            } else if (meterId === '192_meter') {
+                screen.textContent = "[ 66666 ]";
+                screen.className = "text-center text-xs text-red-500 font-bold tracking-wider my-1 font-mono";
+            }
+        }
+
+        // Filtrowanie i wyszukiwanie na żywo
+        let activeFilter = 'all';
+        function filterType(type) {
+            activeFilter = type;
+            
+            const buttons = document.querySelectorAll('.filter-btn');
+            buttons.forEach(btn => {
+                btn.className = "filter-btn px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 shadow-sm transition-all duration-200";
+            });
+            event.currentTarget.className = "filter-btn px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 text-white shadow-sm transition-all duration-200";
+
+            performSearchAndFilter();
+        }
+
+        function performSearchAndFilter() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            
+            const filtered = METERS_DATA.filter(meter => {
+                const matchesSearch = meter.name.toLowerCase().includes(query) || 
+                                      meter.desc.toLowerCase().includes(query) ||
+                                      meter.adminPass.toLowerCase().includes(query);
+                
+                let matchesFilter = true;
+                if (activeFilter === 'zapi') {
+                    matchesFilter = meter.tags.includes('zapi');
+                } else if (activeFilter === 'numeric') {
+                    matchesFilter = meter.tags.includes('numeric');
+                } else if (activeFilter === 'arrows') {
+                    matchesFilter = meter.tags.includes('arrows');
+                }
+
+                return matchesSearch && matchesFilter;
+            });
+
+            renderMeters(filtered);
+        }
+
+        document.getElementById('search-input').addEventListener('input', performSearchAndFilter);
+
+        // Start aplikacji po załadowaniu DOM
+        window.addEventListener('DOMContentLoaded', () => {
+            renderMeters(METERS_DATA);
+        });
+    </script>
+</body>
+</html>
